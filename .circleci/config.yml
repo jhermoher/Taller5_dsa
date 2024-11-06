@@ -8,11 +8,19 @@ jobs:
     steps:
       - checkout
 
+      # Clean environment and cache
+      - run:
+          name: Clean Environment
+          command: |
+            rm -rf venv
+            rm -rf .tox
+            pip cache purge || true
+
       # Restore cached dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt" }}-{{ checksum "typing_requirements.txt" }}
-            - v1-dependencies-
+            - v2-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt" }}-{{ checksum "typing_requirements.txt" }}
+            - v2-dependencies-
 
       # Set up Python environment and install dependencies
       - run:
@@ -20,18 +28,18 @@ jobs:
           command: |
             python -m venv venv
             . venv/bin/activate
-            pip install --upgrade pip
-            pip install tox
-            pip install -r requirements.txt
-            pip install -r test_requirements.txt
-            pip install -r typing_requirements.txt
-            pip install ./model-pkg/model_abandono-0.0.1-py3-none-any.whl
+            pip install --no-cache-dir --upgrade pip
+            pip install --no-cache-dir tox
+            pip install --no-cache-dir -r requirements.txt
+            pip install --no-cache-dir -r test_requirements.txt
+            pip install --no-cache-dir -r typing_requirements.txt
+            pip install --no-cache-dir ./model-pkg/model_abandono-0.0.1-py3-none-any.whl
 
-      # Save cache
+      # Save cache with new version key
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt" }}-{{ checksum "typing_requirements.txt" }}
+          key: v2-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt" }}-{{ checksum "typing_requirements.txt" }}
 
       # Run code quality checks
       - run:
@@ -39,6 +47,13 @@ jobs:
           command: |
             . venv/bin/activate
             tox -e checks
+
+      # Clean tox environment before tests
+      - run:
+          name: Clean Tox Environment
+          command: |
+            . venv/bin/activate
+            rm -rf .tox
 
       # Run tests
       - run:
