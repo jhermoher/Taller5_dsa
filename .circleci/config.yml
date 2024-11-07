@@ -1,78 +1,51 @@
-version: 2.1
+version: '2.1'
+orbs:
+  node: circleci/node@5.1.0
+
+defaults: &defaults
+  docker:
+    - image: cimg/python:3.10
+  working_directory: ~/project
+
+prepare_venv: &prepare_venv
+  run:
+    name: Create venv
+    command: |
+      python -m venv venv
+      source venv/bin/activate
+      pip install --upgrade pip
 
 jobs:
-  build-and-test:
-    docker:
-      - image: cimg/python:3.10
-
+  deploy_app_to_railway:
+    <<: *defaults
     steps:
-      - checkout
-
-      # Clean environment and cache
+      - checkout:
+          path: ~/project/
+      - node/install:
+          node-version: '20.9'
+      - run: node --version
+      - run: npm i -g @railway/cli
       - run:
-          name: Clean Environment
+          name: Deploy to Railway App
           command: |
-            rm -rf venv
-            rm -rf .tox
-            pip cache purge || true
+            cd bankchurn-api 
+            railway up --service=NombreDelServicio
+            railway up --detach
 
-      # Restore cached dependencies
-      - restore_cache:
-          keys:
-            - v2-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt" }}-{{ checksum "typing_requirements.txt" }}
-            - v2-dependencies-
 
-      # Set up Python environment and install dependencies
-      - run:
-          name: Install Dependencies
-          command: |
-            python -m venv venv
-            . venv/bin/activate
-            pip install --no-cache-dir --upgrade pip
-            pip install --no-cache-dir tox
-            pip install --no-cache-dir -r requirements.txt
-            pip install --no-cache-dir -r test_requirements.txt
-            pip install --no-cache-dir -r typing_requirements.txt
-            pip install --no-cache-dir ./model-pkg/model_abandono-0.0.1-py3-none-any.whl
-
-      # Save cache with new version key
-      - save_cache:
-          paths:
-            - ./venv
-          key: v2-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test_requirements.txt" }}-{{ checksum "typing_requirements.txt" }}
-
-      # Run code quality checks
-      - run:
-          name: Run Code Quality Checks
-          command: |
-            . venv/bin/activate
-            tox -e checks
-
-      # Clean tox environment before tests
-      - run:
-          name: Clean Tox Environment
-          command: |
-            . venv/bin/activate
-            rm -rf .tox
-
-      # Run tests
-      - run:
-          name: Run Tests
-          command: |
-            . venv/bin/activate
-            tox -e test_app
-
-      # Store test results
-      - store_test_results:
-          path: test-results
-
-      # Store artifacts
-      - store_artifacts:
-          path: test-results
-          destination: tr1
+tags_only: &tags_only
+  filters:
+    branches:
+      ignore: /.*/
+    tags:
+      only: /^.*/
 
 workflows:
-  version: 2
-  build-test:
+  version: 1
+  deploy_pipeline:
     jobs:
-      - build-and-test
+      - deploy_app_to_railway:
+          filters:
+            branches:
+              only:
+                - main
