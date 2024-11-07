@@ -29,9 +29,7 @@ jobs:
       - run:
           name: Railway Login
           command: |
-            echo "${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}" > railway.token
-            railway login --token-file railway.token
-            rm railway.token
+            railway login --token "${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}"
       - run:
           name: Deploy to Railway App
           command: |
