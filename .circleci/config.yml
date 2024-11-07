@@ -27,24 +27,11 @@ jobs:
       - run: node --version
       - run: npm i -g @railway/cli
       - run:
-          name: Railway Login and Project Setup
+          name: Deploy to Railway App
           command: |
-            cd bankchurn-api
-            RAILWAY_TOKEN="${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}" railway link --project ${R7fc494bf-a669-484b-b368-ffff9d005361}
-          no_output_timeout: 10m    
-      - run:
-          name: Deploy to Railway
-          command: |
-            cd bankchurn-api
-            # Remove any existing service selection
-            railway service
-            # Deploy with explicit project and service
-            RAILWAY_TOKEN="${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}" railway up \
-              --project ${7fc494bf-a669-484b-b368-ffff9d005361} \
-              --service radiant-joy \
-              --detach \
-              --timeout 20m
-          no_output_timeout: 30m
+            cd bankchurn-api 
+            railway up --service=radiant-joy
+            railway up --detach
 
 tags_only: &tags_only
   filters:
