@@ -27,10 +27,6 @@ jobs:
       - run: node --version
       - run: npm i -g @railway/cli
       - run:
-          name: Railway Login
-          command: |
-            railway login --token "${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}"
-      - run:
           name: Deploy to Railway App
           command: |
             cd bankchurn-api 
