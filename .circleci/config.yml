@@ -1,4 +1,5 @@
 version: '2.1'
+
 orbs:
   node: circleci/node@5.1.0
 
@@ -7,44 +8,96 @@ defaults: &defaults
     - image: cimg/python:3.10
   working_directory: ~/project
 
-prepare_venv: &prepare_venv
-  run:
-    name: Create venv
-    command: |
-      python -m venv venv
-      source venv/bin/activate
-      pip install --upgrade pip
+commands:
+  install_dependencies:
+    steps:
+      - restore_cache:
+          keys:
+            - v2-deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+            - v2-deps-{{ .Branch }}
+            - v2-deps
+      
+      - run:
+          name: Install Dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install --upgrade pip
+            # Install specific version of scikit-learn to match saved models
+            pip install scikit-learn==1.3.2
+            pip install -r requirements.txt
+            pip freeze > installed_requirements.txt
+      
+      - save_cache:
+          paths:
+            - ./venv
+          key: v2-deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
 
 jobs:
+  test:
+    <<: *defaults
+    steps:
+      - checkout
+      - install_dependencies
+      - run:
+          name: Show Python and Package Versions
+          command: |
+            . venv/bin/activate
+            python --version
+            pip freeze | grep scikit-learn
+            pip freeze | grep numpy
+            pip freeze | grep pandas
+      
+      - run:
+          name: Run Tests
+          command: |
+            . venv/bin/activate
+            # Add verbose output for debugging
+            pytest -v --tb=long tests/
+      
+      - store_test_results:
+          path: test-results
+      
+      - store_artifacts:
+          path: test-results
+          destination: tr1
+
   deploy_app_to_railway:
     <<: *defaults
     steps:
-      - checkout:
-          path: ~/project/
+      - checkout
+      - install_dependencies
       - node/install:
           node-version: '20.9'
-      - run: node --version
-      - run: npm i -g @railway/cli
       - run:
-          name: Deploy to Railway App
+          name: Setup Environment
+          command: |
+            node --version
+            python --version
+            npm i -g @railway/cli
+      
+      - run:
+          name: Railway Login
+          command: |
+            echo "${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}" > railway.token
+            railway login --token-file railway.token
+            rm railway.token
+      
+      - run:
+          name: Deploy to Railway
           command: |
             cd bankchurn-api 
-            railway up --service=NombreDelServicio
-            railway up --detach
-
-
-tags_only: &tags_only
-  filters:
-    branches:
-      ignore: /.*/
-    tags:
-      only: /^.*/
+            railway link
+            railway up --service="${radiant-joy}" --detach
 
 workflows:
-  version: 1
-  deploy_pipeline:
+  version: 2
+  test_and_deploy:
     jobs:
+      - test
       - deploy_app_to_railway:
+          requires:
+            - test
           filters:
             branches:
               only:
