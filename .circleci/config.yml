@@ -29,7 +29,6 @@ jobs:
       - run:
           name: Railway Login and Project Setup
           command: |
-            RAILWAY_TOKEN="${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}" railway login
             cd bankchurn-api
             RAILWAY_TOKEN="${fd797f9c-ee90-4e19-bdbd-dc93e35b6dad}" railway link --project ${R7fc494bf-a669-484b-b368-ffff9d005361}
           no_output_timeout: 10m    
